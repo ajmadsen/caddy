@@ -268,7 +268,7 @@ func (rp *ReverseProxy) UseInsecureTransport() {
 // It is designed to handle websocket connection upgrades as well.
 func (rp *ReverseProxy) ServeHTTP(rw http.ResponseWriter, outreq *http.Request, respUpdateFn respUpdateFn) error {
 	transport := rp.Transport
-	if requestIsWebsocket(outreq) {
+	if requestIsProxyable(outreq) {
 		transport = newConnHijackerTransport(transport)
 	} else if transport == nil {
 		transport = http.DefaultTransport
@@ -286,7 +286,7 @@ func (rp *ReverseProxy) ServeHTTP(rw http.ResponseWriter, outreq *http.Request, 
 	}
 
 	upgradeHdr := strings.ToLower(res.Header.Get("Upgrade"))
-	isWebsocket := res.StatusCode == http.StatusSwitchingProtocols && (upgradeHdr == "websocket" || strings.Contains(upgradeHdr, "spdy"))
+	isProxyable := res.StatusCode == http.StatusSwitchingProtocols && (upgradeHdr == "websocket" || strings.Contains(upgradeHdr, "spdy"))
 
 	// Remove hop-by-hop headers listed in the
 	// "Connection" header of the response.
@@ -306,7 +306,7 @@ func (rp *ReverseProxy) ServeHTTP(rw http.ResponseWriter, outreq *http.Request, 
 		respUpdateFn(res)
 	}
 
-	if isWebsocket {
+	if isProxyable {
 		defer res.Body.Close()
 		hj, ok := rw.(http.Hijacker)
 		if !ok {
@@ -658,7 +658,7 @@ func (tlsHandshakeTimeoutError) Timeout() bool   { return true }
 func (tlsHandshakeTimeoutError) Temporary() bool { return true }
 func (tlsHandshakeTimeoutError) Error() string   { return "net/http: TLS handshake timeout" }
 
-func requestIsWebsocket(req *http.Request) bool {
+func requestIsProxyable(req *http.Request) bool {
 	upgradeHdr := strings.ToLower(req.Header.Get("Upgrade"))
 	return (upgradeHdr == "websocket" || strings.Contains(upgradeHdr, "spdy")) && strings.Contains(strings.ToLower(req.Header.Get("Connection")), "upgrade")
 }
