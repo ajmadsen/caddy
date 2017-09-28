@@ -285,7 +285,8 @@ func (rp *ReverseProxy) ServeHTTP(rw http.ResponseWriter, outreq *http.Request, 
 		return err
 	}
 
-	isWebsocket := res.StatusCode == http.StatusSwitchingProtocols && strings.ToLower(res.Header.Get("Upgrade")) == "websocket"
+	upgradeHdr := strings.ToLower(res.Header.Get("Upgrade"))
+	isWebsocket := res.StatusCode == http.StatusSwitchingProtocols && (upgradeHdr == "websocket" || strings.Contains(upgradeHdr, "spdy"))
 
 	// Remove hop-by-hop headers listed in the
 	// "Connection" header of the response.
